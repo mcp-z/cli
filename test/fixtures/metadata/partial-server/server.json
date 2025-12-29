@@ -1,0 +1,47 @@
+{
+  "name": "io.mcp-z.test/partial-server",
+  "description": "Test partial server with environment variable choices",
+  "version": "1.0.0",
+  "title": "Partial Server",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@mcp-z/test-partial-server",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "node",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "test/lib/servers/partial-stdio.mjs"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "LOG_LEVEL",
+          "description": "Logging level",
+          "isRequired": false,
+          "isSecret": false,
+          "choices": ["debug", "info", "warn", "error"],
+          "default": "info"
+        },
+        {
+          "name": "AUTH_MODE",
+          "description": "Authentication mode",
+          "isRequired": true,
+          "isSecret": false,
+          "choices": ["none", "basic", "oauth"]
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--mode",
+          "description": "Server mode",
+          "choices": ["development", "production"]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "name": "io.mcp-z.test/echo-server",
+  "description": "Test echo server with stdio transport",
+  "version": "1.0.0",
+  "title": "Echo Server",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@mcp-z/test-echo-server",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "node",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "test/lib/servers/echo-stdio.mjs"
+        }
+      ],
+      "environmentVariables": [
+        {
+          "name": "TEST_ENV_VAR",
+          "description": "Test environment variable for validation",
+          "isRequired": false,
+          "isSecret": false,
+          "placeholder": "test-value"
+        },
+        {
+          "name": "TEST_SECRET",
+          "description": "Test secret environment variable",
+          "isRequired": false,
+          "isSecret": true,
+          "placeholder": "secret-value"
+        }
+      ],
+      "packageArguments": [
+        {
+          "type": "named",
+          "name": "--verbose",
+          "description": "Enable verbose logging"
+        },
+        {
+          "type": "named",
+          "name": "--port",
+          "description": "Server port number"
+        }
+      ]
+    }
+  ]
+}

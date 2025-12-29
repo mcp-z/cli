@@ -1,0 +1,24 @@
+{
+  "name": "io.mcp-z.test/minimal-server",
+  "description": "Test minimal server with stdio transport",
+  "version": "1.0.0",
+  "title": "Minimal Server",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@mcp-z/test-minimal-server",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtimeHint": "node",
+      "runtimeArguments": [
+        {
+          "type": "named",
+          "name": "test/lib/servers/minimal-stdio.mjs"
+        }
+      ],
+      "environmentVariables": [],
+      "packageArguments": []
+    }
+  ]
+}
