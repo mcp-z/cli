@@ -3,6 +3,8 @@ import assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
 
+const TEST_CWD = process.cwd();
+
 /**
  * Unit tests for the upCommand function (testing different spawn modes)
  */
@@ -180,7 +182,7 @@ function createStdioOnlyConfig(): string {
  */
 function runUpHttpOnlyCommand(configPath: string, opts: { env?: Record<string, string> } = {}) {
   const cmd = process.execPath;
-  const cliPath = path.join(process.cwd(), 'src/cli.ts');
+  const cliPath = path.join(TEST_CWD, 'dist/cjs/cli.js');
   const fullArgs = [cliPath, 'up', '--http-only', '--config', configPath];
   const childEnv = { ...process.env, LOG_LEVEL: 'info', ...opts.env };
   const child = spawn(cmd, fullArgs, { stdio: ['ignore', 'pipe', 'pipe'], env: childEnv });
