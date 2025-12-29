@@ -1,6 +1,6 @@
 {
   "name": "@mcp-z/cli",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "CLI tool for managing MCP server clusters and testing workflows.",
   "keywords": [
     "mcp",
