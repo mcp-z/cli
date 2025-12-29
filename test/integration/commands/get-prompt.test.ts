@@ -5,15 +5,13 @@
  * Uses fixture servers (echo-server.ts) that don't require credentials.
  */
 
+import { getPromptCommand } from '@mcp-z/cli';
 import assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { getPromptCommand } from '../../../src/commands/get-prompt.ts';
+import * as url from 'url';
 
-// ES module equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(typeof __filename !== 'undefined' ? __filename : url.fileURLToPath(import.meta.url));
 
 describe('get-prompt command (integration)', () => {
   let tempDir: string;

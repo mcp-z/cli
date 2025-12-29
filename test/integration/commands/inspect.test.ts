@@ -5,17 +5,15 @@
  * These tests use fixture servers (minimal-stdio.ts) that don't require credentials.
  */
 
+import { inspectCommand } from '@mcp-z/cli';
 import { createServerRegistry, type ServerRegistry } from '@mcp-z/client';
 import assert from 'assert';
 import * as fs from 'fs';
 import getPort from 'get-port';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-import { inspectCommand } from '../../../src/commands/inspect.ts';
+import * as url from 'url';
 
-// ES module equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(typeof __filename !== 'undefined' ? __filename : url.fileURLToPath(import.meta.url));
 
 describe('inspect command (integration)', () => {
   let tempDir: string;
