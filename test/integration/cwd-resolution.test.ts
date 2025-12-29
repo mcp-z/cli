@@ -37,7 +37,7 @@ describe('integration/cwd-resolution', () => {
     const tmpCfg = await createTmpConfig();
 
     // Spawn the CLI directly to test cwd resolution
-    const child = spawn(process.execPath, [path.join(TEST_CWD, 'src/cli.ts'), 'up', '--config', tmpCfg], {
+    const child = spawn(process.execPath, [path.join(TEST_CWD, 'dist/cjs/cli.js'), 'up', '--config', tmpCfg], {
       stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, LOG_LEVEL: 'info' },
     });
