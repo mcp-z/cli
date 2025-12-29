@@ -1,16 +1,12 @@
 import { Ajv, type ErrorObject } from 'ajv';
+import addFormats from 'ajv-formats';
 import * as fs from 'fs';
-import { createRequire } from 'module';
+import moduleRoot from 'module-root-sync';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
+import * as url from 'url';
 
-// ESM-compatible __dirname equivalent
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Import ajv-formats (CommonJS module - use createRequire for ESM compatibility)
-const require = createRequire(import.meta.url);
-const addFormats = require('ajv-formats');
+const __dirname = path.dirname(typeof __filename !== 'undefined' ? __filename : url.fileURLToPath(import.meta.url));
+const packageRoot = moduleRoot(__dirname);
 
 export const SCHEMA_URL = 'https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json';
 
@@ -42,12 +38,12 @@ export async function getSchema(): Promise<object> {
   }
 
   // Fallback to bundled schema
-  const bundledPath = path.join(__dirname, '../../schemas/server.schema.json');
-  if (!fs.existsSync(bundledPath)) {
+  const schemaPath = path.join(packageRoot, './schemas/server.schema.json');
+  if (!fs.existsSync(schemaPath)) {
     throw new Error('Failed to fetch MCP schema from URL and no bundled schema found. ' + 'Check network connection or report this as a bug.');
   }
 
-  schemaCache = JSON.parse(fs.readFileSync(bundledPath, 'utf8')) as object;
+  schemaCache = JSON.parse(fs.readFileSync(schemaPath, 'utf8')) as object;
   return schemaCache;
 }
 

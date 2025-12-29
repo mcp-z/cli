@@ -1,8 +1,7 @@
+import { type Combination, createConfigChoices, discoverServerJson, extractServerName, filterConfigChoices, generateConditionalCombinations, generateConfigFile, generateConfigObject, MetadataReader, type ServerMetadata, shouldPromptEnvVar, TRANSPORT_MAP } from '@mcp-z/cli';
 import assert from 'assert';
 import * as fs from 'fs';
 import * as path from 'path';
-import { type Combination, createConfigChoices, discoverServerJson, extractServerName, filterConfigChoices, generateConditionalCombinations, generateConfigFile, generateConfigObject, shouldPromptEnvVar, TRANSPORT_MAP } from '../../../../src/commands/manifest/generate.ts';
-import { MetadataReader, type ServerMetadata } from '../../../../src/commands/manifest/metadata-reader.ts';
 
 // Mock promptForEnvVars to return test values
 let mockEnvVarValues: Record<string, string> = {};

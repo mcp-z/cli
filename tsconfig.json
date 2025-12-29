@@ -2,10 +2,8 @@
   "extends": "tsds-config/tsconfig.json",
   "compilerOptions": {
     "outDir": "dist",
-    "module": "nodenext",
-    "moduleResolution": "nodenext",
     "types": ["node", "mocha"]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules/**/*", "test/**/*"]
+  "include": ["src/**/*", "test/**/*"],
+  "exclude": ["node_modules/**/*"]
 }
