@@ -1,7 +1,7 @@
 import { createServerRegistry, type Dialect, type ServerRegistry } from '@mcp-z/client';
 import * as fs from 'fs';
 import * as path from 'path';
-import { findConfigPath } from '../lib/find-config.ts';
+import findConfigPath from '../lib/find-config-path.ts';
 import { hasStartBlock, type ServerConfig } from '../types.ts';
 
 /**
@@ -54,7 +54,7 @@ export interface UpOptions {
  * });
  */
 export async function upCommand(opts: UpOptions = {}): Promise<ServerRegistry> {
-  const configPath = findConfigPath(opts.config);
+  const configPath = findConfigPath({ config: opts.config });
   const raw = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   const servers = raw.mcpServers ?? raw.servers ?? raw;
   const configDir = path.dirname(configPath);
