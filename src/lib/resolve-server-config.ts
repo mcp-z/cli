@@ -10,7 +10,7 @@ import { validateServers } from '@mcp-z/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { ServerConfig } from '../types.ts';
-import { findConfigPath } from './find-config.ts';
+import findConfigPath from './find-config-path.ts';
 
 /**
  * Options for inline server configuration.
@@ -123,7 +123,7 @@ function resolveFileConfig(opts: InlineConfigOptions): ResolvedServerConfig {
     throw new Error('Server name is required when using config file');
   }
 
-  const cfgPath = findConfigPath(opts.config);
+  const cfgPath = findConfigPath({ config: opts.config });
   const raw = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
   const servers: ServersConfig = raw.mcpServers ?? raw.servers ?? raw;
 
