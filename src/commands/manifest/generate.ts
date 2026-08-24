@@ -974,7 +974,7 @@ async function buildServerConfig(
   envPromptFn: typeof promptForEnvVars = promptForEnvVars
 ): Promise<ServerConfig> {
   // Get package config for transport
-  const transportType = params.transport === 'http' ? 'streamable-http' : 'stdio';
+  const transportType = params.transport === 'http' || params.transport === 'streamable-http' ? 'streamable-http' : 'stdio';
   const pkg = params.metadataReader.getPackageForTransport(params.metadata, transportType);
 
   if (!pkg) {

@@ -300,6 +300,54 @@ describe('manifest generate command', () => {
       });
     });
 
+    it("accepts the canonical 'streamable-http' transport name", async () => {
+      const combination: Combination = {
+        name: 'dcr',
+        envKeys: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'LOG_LEVEL', 'AUTH_MODE'],
+        argNames: [],
+        defaults: {},
+        argDefaults: {},
+        dimensionValues: {},
+      };
+
+      // Spy on getPackageForTransport for this test only, to assert the resolved
+      // transport type directly - the type/url/args assertions below don't depend
+      // on which package was resolved, so they can't catch a regression here.
+      const getPackageForTransportCalls: string[] = [];
+      const spyMetadataReader: Pick<MetadataReader, 'readServerMetadata' | 'getPackageForTransport' | 'discoverInstalledServers'> = {
+        ...mockMetadataReader,
+        getPackageForTransport: (metadata: ServerMetadata, transport: 'stdio' | 'streamable-http') => {
+          getPackageForTransportCalls.push(transport);
+          return mockMetadataReader.getPackageForTransport(metadata, transport);
+        },
+      };
+
+      await generateConfigFile(
+        {
+          serverName: 'gmail',
+          combination,
+          transport: 'streamable-http',
+          outputDir,
+          packageName: '@mcp-z/mcp-gmail',
+          metadata: mockMetadata,
+          metadataReader: spyMetadataReader,
+        },
+        mockPromptForEnvVars
+      );
+
+      // Must resolve the streamable-http package, not fall back to stdio
+      assert.deepStrictEqual(getPackageForTransportCalls, ['streamable-http']);
+
+      // Filename is normalized to the user-facing name
+      const configPath = path.join(outputDir, '.mcp.dcr-http.json');
+      assert.ok(fs.existsSync(configPath), 'Config file should be created');
+
+      const content = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      assert.strictEqual(content.mcpServers.gmail.type, 'http');
+      assert.strictEqual(content.mcpServers.gmail.url, 'http://localhost:3000/mcp');
+      assert.deepStrictEqual(content.mcpServers.gmail.start.args, ['-y', '@mcp-z/mcp-gmail', '--port', '3000']);
+    });
+
     it('should filter env vars based on combination envKeys', async () => {
       // Only provide values for the envKeys in the combination
       mockEnvVarValues = {
