@@ -801,7 +801,7 @@ export async function generateCommand(options: { source?: boolean; json?: boolea
 
       // Build template vars from HTTP settings for placeholder substitution
       const templateVars: Record<string, string> = {};
-      if (transports.includes('http') || transports.includes('streamable-http')) {
+      if (transports.includes('http')) {
         templateVars.HOST = httpHost;
         templateVars.PORT = String(httpPort);
       }
