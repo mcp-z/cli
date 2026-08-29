@@ -310,9 +310,8 @@ describe('manifest generate command', () => {
         dimensionValues: {},
       };
 
-      // Spy on getPackageForTransport for this test only, to assert the resolved
-      // transport type directly - the type/url/args assertions below don't depend
-      // on which package was resolved, so they can't catch a regression here.
+      // Spy on getPackageForTransport: the type/url/args assertions below don't
+      // depend on which package was resolved, so they can't catch a regression.
       const getPackageForTransportCalls: string[] = [];
       const spyMetadataReader: Pick<MetadataReader, 'readServerMetadata' | 'getPackageForTransport' | 'discoverInstalledServers'> = {
         ...mockMetadataReader,
