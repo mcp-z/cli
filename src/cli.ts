@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { COMMANDS, USAGE } from './cli/index.ts';
+import { ERROR_CODE } from './cli/shared.ts';
 import type { Ctx } from './cli/types.ts';
 
 // __dirname (CJS) or its ESM equivalent, then two fixed hops up to the package root. NOT
@@ -28,7 +29,7 @@ function usage(name: string): string {
   return [`Usage: ${name} <command> [options]`, '', 'mcp-z helper CLI', '', 'Commands:', ...lines, '', 'Options:', '  --version, -v    Show version number', '  --help, -h       Show this help message'].join('\n');
 }
 
-// Thrown errors -> exit 1 with the message verbatim; usage errors exit 2.
+// All failures exit ERROR_CODE: usage errors with the usage text, thrown errors with the message verbatim.
 export default async function cli(argv: string[], name: string): Promise<void> {
   if (argv[0] === '--version' || argv[0] === '-v') {
     console.log(packageVersion());
@@ -37,7 +38,7 @@ export default async function cli(argv: string[], name: string): Promise<void> {
   if (argv.length === 0 || argv[0] === '--help' || argv[0] === '-h') {
     if (argv.length === 0) {
       console.error(usage(name));
-      process.exit(2);
+      process.exit(ERROR_CODE);
     }
     console.log(usage(name));
     return;
@@ -48,7 +49,7 @@ export default async function cli(argv: string[], name: string): Promise<void> {
     rest: argv.slice(1),
     usageError(message) {
       console.error(message);
-      process.exit(2);
+      process.exit(ERROR_CODE);
     },
   };
 
@@ -56,14 +57,14 @@ export default async function cli(argv: string[], name: string): Promise<void> {
   if (!load) {
     console.error(`Unknown command '${argv[0]}'`);
     console.error(usage(name));
-    process.exit(2);
+    process.exit(ERROR_CODE);
   }
 
   try {
     await (await load()).default(ctx);
   } catch (err) {
     console.error((err as Error).message);
-    process.exit(1);
+    process.exit(ERROR_CODE);
   }
 }
 

@@ -1,5 +1,5 @@
 import { USAGE } from './index.ts';
-import { parse, positionalsFor } from './shared.ts';
+import { ERROR_CODE, parse, positionalsFor } from './shared.ts';
 import type { Command } from './types.ts';
 
 const search: Command = async (ctx) => {
@@ -30,7 +30,7 @@ const search: Command = async (ctx) => {
     });
   } catch (error) {
     console.error(`\n❌ ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
+    process.exit(ERROR_CODE);
   }
 };
 

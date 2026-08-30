@@ -1,6 +1,7 @@
 import { upCommand } from '@mcp-z/cli';
 import assert from 'assert';
 import * as fs from 'fs';
+import { safeRmSync } from 'fs-remove-compat';
 import * as path from 'path';
 
 const TEST_CWD = process.cwd();
@@ -11,10 +12,10 @@ const TEST_CWD = process.cwd();
 describe('unit/cluster-up-command', () => {
   const tmpRoot = path.resolve('.tmp', 'unit-cluster-up');
   beforeEach(() => {
-    if (fs.existsSync(tmpRoot)) fs.rmSync(tmpRoot, { recursive: true, force: true });
+    if (fs.existsSync(tmpRoot)) safeRmSync(tmpRoot, { recursive: true, force: true });
     fs.mkdirSync(tmpRoot, { recursive: true });
   });
-  after(() => fs.existsSync(tmpRoot) && fs.rmSync(tmpRoot, { recursive: true }));
+  after(() => fs.existsSync(tmpRoot) && safeRmSync(tmpRoot, { recursive: true, force: true }));
 
   it('loads .mcp.json config and returns lifecycle object', async () => {
     const autoDir = path.join(tmpRoot, 'auto');
@@ -116,7 +117,7 @@ async function createTmpConfig(): Promise<string> {
   const tmpRoot = path.resolve('.tmp', 'integration-up-http-only');
 
   try {
-    if (fs.existsSync(tmpRoot)) fs.rmSync(tmpRoot, { recursive: true, force: true });
+    if (fs.existsSync(tmpRoot)) safeRmSync(tmpRoot, { recursive: true, force: true });
     fs.mkdirSync(tmpRoot, { recursive: true });
 
     // Allocate port for HTTP server
@@ -157,7 +158,7 @@ async function createTmpConfig(): Promise<string> {
 function createStdioOnlyConfig(): string {
   const timestamp = Date.now();
   const tmpRoot = path.resolve('.tmp', 'integration-up-http-only');
-  if (fs.existsSync(tmpRoot)) fs.rmSync(tmpRoot, { recursive: true, force: true });
+  if (fs.existsSync(tmpRoot)) safeRmSync(tmpRoot, { recursive: true, force: true });
   fs.mkdirSync(tmpRoot, { recursive: true });
 
   // Paths are relative to config file location (.tmp/integration-up-http-only/)

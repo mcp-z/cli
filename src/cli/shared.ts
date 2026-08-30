@@ -3,7 +3,9 @@ import { parseArgs } from 'node:util';
 
 type Values = Record<string, string | boolean | undefined>;
 
-// Per-command parseArgs: strict (a foreign flag exits 2), and every command gets --help for
+export const ERROR_CODE = 23;
+
+// Per-command parseArgs: strict (a foreign flag exits with ERROR_CODE), and every command gets --help for
 // free. Mirrors sensemaking's src/cli/shared.ts `parse`.
 export function parse(argv: string[], usage: string, options: ParseArgsOptionsConfig): { values: Values; positionals: string[] } {
   let values: Values;
@@ -18,7 +20,7 @@ export function parse(argv: string[], usage: string, options: ParseArgsOptionsCo
   } catch (err) {
     console.error((err as Error).message);
     console.error(usage);
-    process.exit(2);
+    process.exit(ERROR_CODE);
   }
   if (values.help) {
     console.log(usage);
@@ -34,13 +36,13 @@ export function positionalsFor(usage: string, command: string, positionals: stri
   if (positionals.length > params.length) {
     console.error(`too many arguments for '${command}'. Expected ${params.length} but got ${positionals.length}: ${positionals.join(', ')}.`);
     console.error(usage);
-    process.exit(2);
+    process.exit(ERROR_CODE);
   }
   const missing = params.slice(positionals.length).find((p) => p.required);
   if (missing) {
     console.error(`missing required argument '${missing.name}'`);
     console.error(usage);
-    process.exit(2);
+    process.exit(ERROR_CODE);
   }
   return params.map((_, i) => positionals[i]);
 }

@@ -4,6 +4,7 @@ import input from '@inquirer/input';
 import select from '@inquirer/select';
 import * as fs from 'fs';
 import * as path from 'path';
+import { ERROR_CODE } from '../../cli/shared.ts';
 import { validateSchema } from '../../lib/json-schema.ts';
 import type { MCPConfiguration, ServerConfig, ServerConfigHttp, ServerConfigStdio } from '../../types.ts';
 import { promptForEnvVars, substituteTemplateVars } from './env-prompting.ts';
@@ -249,7 +250,7 @@ export async function generateCommand(options: { source?: boolean; json?: boolea
   if (!serverJsonPath) {
     console.error('❌ No server.json found in current directory or parent');
     console.error('   Run this command from an MCP server package directory');
-    process.exit(1);
+    process.exit(ERROR_CODE);
   }
 
   // 2. Read package.json to get package name
@@ -258,7 +259,7 @@ export async function generateCommand(options: { source?: boolean; json?: boolea
   if (!fs.existsSync(packageJsonPath)) {
     console.error('❌ No package.json found alongside server.json');
     console.error('   Package.json is required to get package name');
-    process.exit(1);
+    process.exit(ERROR_CODE);
   }
 
   const packageJson: { name: string; bin?: string | Record<string, string> } = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
@@ -288,7 +289,7 @@ export async function generateCommand(options: { source?: boolean; json?: boolea
     await validateSchema(metadata, serverName);
   } catch (error) {
     console.error(`❌ Failed to read or validate server.json: ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
+    process.exit(ERROR_CODE);
   }
 
   const metadataReader = new MetadataReader();
@@ -297,7 +298,7 @@ export async function generateCommand(options: { source?: boolean; json?: boolea
   const stdioPackage = metadataReader.getPackageForTransport(metadata, 'stdio');
   if (!stdioPackage) {
     console.error('❌ No stdio transport found in server.json');
-    process.exit(1);
+    process.exit(ERROR_CODE);
   }
 
   // 5. Find all environment variables and package arguments with choices
@@ -309,7 +310,7 @@ export async function generateCommand(options: { source?: boolean; json?: boolea
   if (envVarsWithChoices.length === 0 && argsWithChoices.length === 0) {
     console.error('❌ No environment variables or package arguments with choices found in server.json');
     console.error('   Cannot generate configurations without choice-based configuration options');
-    process.exit(1);
+    process.exit(ERROR_CODE);
   }
 
   console.log('\n🔍 Available configuration options:');

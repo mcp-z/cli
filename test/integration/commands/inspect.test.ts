@@ -9,6 +9,7 @@ import { inspectCommand } from '@mcp-z/cli';
 import { createServerRegistry, type ServerRegistry } from '@mcp-z/client';
 import assert from 'assert';
 import * as fs from 'fs';
+import { safeRmSync } from 'fs-remove-compat';
 import getPort from 'get-port';
 import * as path from 'path';
 import * as url from 'url';
@@ -42,7 +43,7 @@ describe('inspect command (integration)', () => {
 
   after(() => {
     try {
-      fs.rmSync(tempDir, { recursive: true, force: true });
+      safeRmSync(tempDir, { recursive: true, force: true });
     } catch {
       // Ignore close errors
     }

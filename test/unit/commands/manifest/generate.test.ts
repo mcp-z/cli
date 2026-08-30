@@ -1,6 +1,7 @@
 import { type Combination, createConfigChoices, discoverServerJson, extractServerName, filterConfigChoices, generateConditionalCombinations, generateConfigFile, generateConfigObject, MetadataReader, type ServerMetadata, shouldPromptEnvVar, TRANSPORT_MAP } from '@mcp-z/cli';
 import assert from 'assert';
 import * as fs from 'fs';
+import { safeRmSync } from 'fs-remove-compat';
 import * as path from 'path';
 
 // Mock promptForEnvVars to return test values
@@ -30,7 +31,7 @@ describe('manifest generate command', () => {
     // Clean up temp files
     try {
       // Recursively remove directory and all contents
-      fs.rmSync(tmpDir, { recursive: true, force: true });
+      safeRmSync(tmpDir, { recursive: true, force: true });
     } catch (_error) {
       // Ignore close errors
     }

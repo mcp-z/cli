@@ -1,4 +1,4 @@
-import { parse, positionalsFor } from './shared.ts';
+import { ERROR_CODE, parse, positionalsFor } from './shared.ts';
 import type { Command } from './types.ts';
 
 const SUB_USAGE = {
@@ -39,7 +39,7 @@ const manifest: Command = async (ctx) => {
       await generateCommand({ source: values.source as boolean | undefined, json: values.json as boolean | undefined, matrix: values.matrix as boolean | undefined, output: values.output as string | undefined, quick: values.quick as boolean | undefined });
     } catch (error) {
       console.error(`\n❌ ${error instanceof Error ? error.message : String(error)}`);
-      process.exit(1);
+      process.exit(ERROR_CODE);
     }
     return;
   }
@@ -53,7 +53,7 @@ const manifest: Command = async (ctx) => {
       await validateCommand(file as string);
     } catch (error) {
       console.error(`\n❌ ${error instanceof Error ? error.message : String(error)}`);
-      process.exit(1);
+      process.exit(ERROR_CODE);
     }
     return;
   }

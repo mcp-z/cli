@@ -1,5 +1,5 @@
 import { USAGE } from './index.ts';
-import { parse } from './shared.ts';
+import { ERROR_CODE, parse } from './shared.ts';
 import type { Command } from './types.ts';
 
 const inspect: Command = async (ctx) => {
@@ -31,7 +31,7 @@ const inspect: Command = async (ctx) => {
     });
   } catch (error) {
     console.error(`\n❌ ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
+    process.exit(ERROR_CODE);
   }
 };
 

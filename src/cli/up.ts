@@ -1,5 +1,5 @@
 import { USAGE } from './index.ts';
-import { parse } from './shared.ts';
+import { ERROR_CODE, parse } from './shared.ts';
 import type { Command } from './types.ts';
 
 const up: Command = async (ctx) => {
@@ -27,17 +27,17 @@ const up: Command = async (ctx) => {
 
     // Signal handlers trigger async shutdown then exit
     process.on('SIGINT', () => {
-      shutdown('SIGINT').catch(() => process.exit(1));
+      shutdown('SIGINT').catch(() => process.exit(ERROR_CODE));
     });
     process.on('SIGTERM', () => {
-      shutdown('SIGTERM').catch(() => process.exit(1));
+      shutdown('SIGTERM').catch(() => process.exit(ERROR_CODE));
     });
 
     // Keep process alive - wait for signal
     await new Promise(() => {});
   } catch (error) {
     console.error(`\n❌ ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(1);
+    process.exit(ERROR_CODE);
   }
 };
 
