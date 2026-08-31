@@ -1,14 +1,11 @@
 # Test Servers
 
-Docs: https://mcp-z.github.io/cli
-This directory contains MCP test servers for testing @mcp-z/cli functionality. Each server demonstrates a specific transport type and serves as a living example for library users.
+Docs: https://mcp-z.github.io/cli This directory contains MCP test servers for testing @mcp-z/cli functionality. Each server demonstrates a specific transport type and serves as a living example for library users.
 
 ## Server Overview
 
 ### echo-stdio.ts
-**Purpose**: Full MCP SDK demonstration with stdio transport
-**Transport**: stdin/stdout process communication
-**Features**:
+**Purpose**: Full MCP SDK demonstration with stdio transport **Transport**: stdin/stdout process communication **Features**:
 - Complete MCP SDK implementation (McpServer, StdioServerTransport)
 - Echo tool with JSON-structured responses
 - Echo resource for URI-based access
@@ -35,9 +32,7 @@ node test/lib/servers/echo-stdio.ts
 ---
 
 ### echo-http.ts
-**Purpose**: Full MCP SDK demonstration with http transport
-**Transport**: HTTP with Server-Sent Events (SSE)
-**Features**:
+**Purpose**: Full MCP SDK demonstration with http transport **Transport**: HTTP with Server-Sent Events (SSE) **Features**:
 - Complete MCP SDK implementation (McpServer, StreamableHTTPServerTransport)
 - Echo tool with JSON-structured responses
 - Echo resource and prompt
@@ -63,9 +58,7 @@ node test/lib/servers/echo-http.ts --port 3000
 ---
 
 ### minimal-stdio.ts
-**Purpose**: Minimal hand-rolled JSON-RPC implementation for low-level testing
-**Transport**: stdin/stdout process communication
-**Features**:
+**Purpose**: Minimal hand-rolled JSON-RPC implementation for low-level testing **Transport**: stdin/stdout process communication **Features**:
 - No MCP SDK dependency (hand-rolled JSON-RPC)
 - Minimal protocol support (initialize, tools/list, tools/call, resources/list, prompts/list)
 - Useful for testing connection logic, env vars, shutdown behavior
@@ -80,9 +73,7 @@ node test/lib/servers/minimal-stdio.ts
 ---
 
 ### pathtest-stdio.ts
-**Purpose**: Validate relative path resolution in spawn-cluster
-**Transport**: stdin/stdout process communication
-**Features**:
+**Purpose**: Validate relative path resolution in spawn-cluster **Transport**: stdin/stdout process communication **Features**:
 - Standard MCP SDK stdio server
 - Used to verify cwd parameter works correctly
 

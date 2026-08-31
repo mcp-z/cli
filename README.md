@@ -1,7 +1,6 @@
 # @mcp-z/cli
 
-Docs: https://mcp-z.github.io/cli
-MCP server lifecycle management and inspection from the command line.
+Docs: https://mcp-z.github.io/cli MCP server lifecycle management and inspection from the command line.
 
 ## Common uses
 
