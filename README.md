@@ -1,6 +1,6 @@
 # @mcp-z/cli
 
-Docs: https://mcp-z.github.io/cli MCP server lifecycle management and inspection from the command line.
+CLI tool for managing MCP server clusters and testing workflows.
 
 ## Common uses
 
@@ -163,3 +163,7 @@ MCP server config supports stdio and HTTP.
 ## Requirements
 
 - Node.js >= 24
+
+### Documentation
+
+[API Docs](https://mcp-z.github.io/cli)
