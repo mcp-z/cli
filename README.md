@@ -1,6 +1,6 @@
 # @mcp-z/cli
 
-Docs: https://mcp-z.github.io/cli MCP server lifecycle management and inspection from the command line.
+CLI tool for managing MCP server clusters and testing workflows.
 
 ## Common uses
 
@@ -128,6 +128,20 @@ Generate or validate `server.json`.
 Common use cases:
 - Author or validate MCP server manifests
 
+## Protocol version (`--protocol`)
+
+Every command that connects to a server (`inspect`, `call-tool`, `read-resource`, `get-prompt`, `search`) accepts:
+
+```
+--protocol <legacy|auto|2026-07-28>
+```
+
+- `legacy` (the default when the flag is absent) — the plain 2025 connect sequence.
+- `auto` — probes the server with a `server/discover` request first, connects at the newest revision the server offers, and falls back to the 2025 sequence when the server cannot serve the modern era.
+- `2026-07-28` — pins that revision. A server that does not offer it fails the connect with a message suggesting `--protocol auto`, instead of silently downgrading.
+
+**Stall risk with `auto` on stdio servers:** the probe is a regular request, so a legacy server that never answers an unknown pre-`initialize` request (it goes silent rather than replying "method not found") costs the full request timeout — 60 seconds — before the client falls back to the 2025 sequence. The probe ends as soon as the server answers it with *anything*, including a JSON-RPC error, so well-behaved 2025 servers fall back in milliseconds.
+
 ## Inline usage
 
 ```bash
@@ -163,3 +177,7 @@ MCP server config supports stdio and HTTP.
 ## Requirements
 
 - Node.js >= 24
+
+### Documentation
+
+[API Docs](https://mcp-z.github.io/cli)

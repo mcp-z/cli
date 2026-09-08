@@ -5,11 +5,11 @@ import type { Command } from './types.ts';
 // each line, not two that can drift.
 export const USAGE = {
   up: 'up [--config <path>] [--stdio-only] [--http-only]',
-  inspect: 'inspect [--config <path>] [--servers <list>] [--tools] [--resources] [--prompts] [--health] [--json] [--verbose] [--attach]',
-  'call-tool': 'call-tool [server] <tool> <args> [--config <path>] [--run <cmd>] [--url <url>] [--server <json>] [--json]',
-  'read-resource': 'read-resource [server] <uri> [--config <path>] [--run <cmd>] [--url <url>] [--server <json>] [--json]',
-  'get-prompt': 'get-prompt [server] <name> [args] [--config <path>] [--run <cmd>] [--url <url>] [--server <json>] [--json]',
-  search: 'search <query> [--config <path>] [--servers <list>] [--types <list>] [--fields <list>] [--limit <n>] [--threshold <n>] [--json] [--attach]',
+  inspect: 'inspect [--config <path>] [--servers <list>] [--tools] [--resources] [--prompts] [--health] [--protocol <legacy|auto|2026-07-28>] [--json] [--verbose] [--attach]',
+  'call-tool': 'call-tool [server] <tool> <args> [--config <path>] [--run <cmd>] [--url <url>] [--server <json>] [--protocol <legacy|auto|2026-07-28>] [--json]',
+  'read-resource': 'read-resource [server] <uri> [--config <path>] [--run <cmd>] [--url <url>] [--server <json>] [--protocol <legacy|auto|2026-07-28>] [--json]',
+  'get-prompt': 'get-prompt [server] <name> [args] [--config <path>] [--run <cmd>] [--url <url>] [--server <json>] [--protocol <legacy|auto|2026-07-28>] [--json]',
+  search: 'search <query> [--config <path>] [--servers <list>] [--types <list>] [--fields <list>] [--limit <n>] [--threshold <n>] [--protocol <legacy|auto|2026-07-28>] [--json] [--attach]',
   manifest: 'manifest <generate|validate> [options]',
 } as const;
 

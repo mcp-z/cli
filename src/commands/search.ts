@@ -9,6 +9,7 @@ import { type CapabilityType, createServerRegistry, type SearchField, type Searc
 import * as fs from 'fs';
 import * as path from 'path';
 import findConfigPath from '../lib/find-config-path.ts';
+import { eraNegotiationError, protocolToVersionNegotiation } from '../lib/protocol.ts';
 
 export interface SearchCommandOptions {
   config?: string;
@@ -17,6 +18,7 @@ export interface SearchCommandOptions {
   fields?: string;
   limit?: number;
   threshold?: number;
+  protocol?: string;
   json?: boolean;
   attach?: boolean;
 }
@@ -37,6 +39,9 @@ export interface SearchCommandOptions {
  */
 export async function searchCommand(query: string, opts: SearchCommandOptions = {}): Promise<void> {
   let registry: ServerRegistry | undefined;
+
+  // Fail fast on a bad --protocol value, before any server is spawned
+  const versionNegotiation = protocolToVersionNegotiation(opts.protocol);
 
   try {
     const configPath = findConfigPath({ config: opts.config });
@@ -65,11 +70,14 @@ export async function searchCommand(query: string, opts: SearchCommandOptions = 
 
     for (const serverName of serverNames) {
       try {
-        await registry.connect(serverName);
+        await registry.connect(serverName, versionNegotiation !== undefined ? { versionNegotiation } : undefined);
       } catch (error) {
         // Log connection errors but continue with other servers
+        // A pinned connection against a server that cannot serve the revision fails with
+        // the SDK's typed era error; surface it with the fix, not the wire-level message
+        const err = eraNegotiationError(error) ?? error;
         if (!opts.json) {
-          console.error(`⚠ Failed to connect to ${serverName}: ${error instanceof Error ? error.message : String(error)}`);
+          console.error(`⚠ Failed to connect to ${serverName}: ${err instanceof Error ? err.message : String(err)}`);
         }
       }
     }

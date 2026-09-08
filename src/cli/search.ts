@@ -11,6 +11,7 @@ const search: Command = async (ctx) => {
     fields: { type: 'string' },
     limit: { type: 'string' },
     threshold: { type: 'string' },
+    protocol: { type: 'string' },
     json: { type: 'boolean' },
     attach: { type: 'boolean' },
   });
@@ -25,6 +26,7 @@ const search: Command = async (ctx) => {
       fields: values.fields as string | undefined,
       limit: values.limit !== undefined ? Number.parseInt(values.limit as string, 10) : undefined,
       threshold: values.threshold !== undefined ? Number.parseFloat(values.threshold as string) : undefined,
+      protocol: values.protocol as string | undefined,
       json: values.json as boolean | undefined,
       attach: values.attach as boolean | undefined,
     });

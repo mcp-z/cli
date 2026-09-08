@@ -17,6 +17,7 @@ const __dirname = path.dirname(typeof __filename !== 'undefined' ? __filename : 
 describe('call-tool command (integration)', () => {
   let tempDir: string;
   let testConfigPath: string;
+  let modernConfigPath: string;
 
   before(() => {
     tempDir = path.resolve('.tmp', `call-tool-integration-${Date.now()}`);
@@ -37,6 +38,19 @@ describe('call-tool command (integration)', () => {
 
     testConfigPath = path.join(tempDir, '.mcp.json');
     fs.writeFileSync(testConfigPath, JSON.stringify(testConfig, null, 2));
+
+    // Config pointing at the 2026-07-28-era fixture (offers the modern revision via server/discover)
+    const modernConfig = {
+      mcpServers: {
+        modern: {
+          command: 'node',
+          args: [path.join(__dirname, '../../lib/servers/modern-stdio.mjs')],
+        },
+      },
+    };
+
+    modernConfigPath = path.join(tempDir, 'modern.json');
+    fs.writeFileSync(modernConfigPath, JSON.stringify(modernConfig, null, 2));
   });
 
   after(() => {
@@ -142,6 +156,114 @@ describe('call-tool command (integration)', () => {
         console.log = originalLog;
         throw error;
       }
+    });
+  });
+
+  describe('--protocol', () => {
+    it('should connect with --protocol legacy', async () => {
+      const output: string[] = [];
+      const originalLog = console.log;
+      console.log = (...args: unknown[]) => {
+        output.push(args.join(' '));
+      };
+
+      try {
+        await callToolCommand({
+          server: 'echo',
+          tool: 'echo',
+          args: JSON.stringify({ message: 'legacy-message' }),
+          protocol: 'legacy',
+          config: testConfigPath,
+        });
+      } finally {
+        console.log = originalLog;
+      }
+
+      assert.ok(output.join('\n').includes('legacy-message'), 'should echo the message with --protocol legacy');
+    });
+
+    it('should probe and fall back with --protocol auto on a 2025 server', async () => {
+      const output: string[] = [];
+      const originalLog = console.log;
+      console.log = (...args: unknown[]) => {
+        output.push(args.join(' '));
+      };
+
+      try {
+        await callToolCommand({
+          server: 'echo',
+          tool: 'echo',
+          args: JSON.stringify({ message: 'auto-legacy-message' }),
+          protocol: 'auto',
+          config: testConfigPath,
+        });
+      } finally {
+        console.log = originalLog;
+      }
+
+      assert.ok(output.join('\n').includes('auto-legacy-message'), 'should fall back to the 2025 sequence and echo the message');
+    });
+
+    it('should negotiate the modern revision with --protocol 2026-07-28', async () => {
+      const output: string[] = [];
+      const originalLog = console.log;
+      console.log = (...args: unknown[]) => {
+        output.push(args.join(' '));
+      };
+
+      try {
+        await callToolCommand({
+          server: 'modern',
+          tool: 'echo',
+          args: JSON.stringify({ message: 'modern-message' }),
+          protocol: '2026-07-28',
+          config: modernConfigPath,
+        });
+      } finally {
+        console.log = originalLog;
+      }
+
+      assert.ok(output.join('\n').includes('modern-message'), 'should connect pinned to 2026-07-28 and echo the message');
+    });
+
+    it('should fail a pinned 2026-07-28 connect against a 2025-only server with a friendly error', async () => {
+      await assert.rejects(
+        async () => {
+          await callToolCommand({
+            server: 'echo',
+            tool: 'echo',
+            args: JSON.stringify({ message: 'test' }),
+            protocol: '2026-07-28',
+            config: testConfigPath,
+          });
+        },
+        (err: Error) => {
+          assert.match(err.message, /does not speak protocol revision 2026-07-28/);
+          assert.match(err.message, /--protocol auto/);
+          return true;
+        },
+        'should suggest --protocol auto instead of showing the SDK wire error'
+      );
+    });
+
+    it('should reject an invalid --protocol value, naming the accepted ones', async () => {
+      await assert.rejects(
+        async () => {
+          await callToolCommand({
+            server: 'echo',
+            tool: 'echo',
+            args: JSON.stringify({ message: 'test' }),
+            protocol: 'bogus',
+            config: testConfigPath,
+          });
+        },
+        (err: Error) => {
+          assert.match(err.message, /Invalid --protocol value 'bogus'/);
+          assert.match(err.message, /Accepted values: legacy, auto, 2026-07-28/);
+          return true;
+        },
+        'should fail immediately on an invalid value'
+      );
     });
   });
 

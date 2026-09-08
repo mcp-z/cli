@@ -5,10 +5,11 @@
  * Supports stdio (spawned) and http (remote) servers per MCP spec.
  */
 
-import { createServerRegistry, type PromptArgument, type ServerRegistry, type ServersConfig } from '@mcp-z/client';
+import { createServerRegistry, type PromptArgument, type ServerRegistry, type ServersConfig, type VersionNegotiationOptions } from '@mcp-z/client';
 import * as fs from 'fs';
 import * as path from 'path';
 import findConfigPath from '../lib/find-config-path.ts';
+import { eraNegotiationError, protocolToVersionNegotiation } from '../lib/protocol.ts';
 import { isHttpServer, type ServerConfig } from '../types.ts';
 
 const MAX_DESCRIPTION = 100;
@@ -20,6 +21,7 @@ export interface InspectOptions {
   resources?: boolean; // --resources
   prompts?: boolean; // --prompts
   health?: boolean; // --health
+  protocol?: string; // --protocol legacy|auto|2026-07-28
   json?: boolean; // --json
   verbose?: boolean; // --verbose
   attach?: boolean; // --attach (connect to running servers instead of spawning)
@@ -74,6 +76,9 @@ interface PromptInfo {
 export async function inspectCommand(opts: InspectOptions = {}): Promise<void> {
   let registry: ServerRegistry | undefined;
 
+  // Fail fast on a bad --protocol value, before any server is spawned
+  const versionNegotiation = protocolToVersionNegotiation(opts.protocol);
+
   try {
     const configPath = findConfigPath({ config: opts.config });
     const raw = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -91,7 +96,7 @@ export async function inspectCommand(opts: InspectOptions = {}): Promise<void> {
 
     const serverInfos: ServerInfo[] = [];
     for (const serverName of serversToInspect) {
-      const info = await inspectServer(serverName, servers, registry, opts);
+      const info = await inspectServer(serverName, servers, registry, opts, versionNegotiation);
       serverInfos.push(info);
     }
 
@@ -134,7 +139,7 @@ function filterServers(allServers: string[], serversFlag?: string): string[] {
 /**
  * Inspect a single server: collect tools, resources, prompts, health.
  */
-async function inspectServer(serverName: string, servers: ServersConfig, registry: ServerRegistry, opts: InspectOptions): Promise<ServerInfo> {
+async function inspectServer(serverName: string, servers: ServersConfig, registry: ServerRegistry, opts: InspectOptions, versionNegotiation: VersionNegotiationOptions | undefined): Promise<ServerInfo> {
   const start = Date.now();
 
   try {
@@ -148,7 +153,7 @@ async function inspectServer(serverName: string, servers: ServersConfig, registr
       throw new Error(`Stdio server ${serverName} missing required "command" field`);
     }
 
-    const client = await registry.connect(serverName);
+    const client = await registry.connect(serverName, versionNegotiation !== undefined ? { versionNegotiation } : undefined);
 
     // Collect content based on flags
     const needsTools = opts.tools || shouldShowSummary(opts);
@@ -191,6 +196,13 @@ async function inspectServer(serverName: string, servers: ServersConfig, registr
   } catch (error) {
     // Format error message with context
     let errorMessage = error instanceof Error ? error.message : String(error);
+
+    // A pinned connection against a server that cannot serve the revision fails with the
+    // SDK's typed era error; surface it as a configuration error with a fix, not a stack
+    const eraError = eraNegotiationError(error);
+    if (eraError) {
+      errorMessage = eraError.message;
+    }
 
     // For fetch errors, dig into the cause for more details
     if (error instanceof Error && error.message === 'fetch failed' && 'cause' in error) {

@@ -4,7 +4,7 @@ import type { Command } from './types.ts';
 
 const readResource: Command = async (ctx) => {
   const usageLine = `usage: ${ctx.name} ${USAGE['read-resource']}`;
-  const { values, positionals } = parse(ctx.rest, usageLine, { config: { type: 'string' }, run: { type: 'string' }, url: { type: 'string' }, server: { type: 'string' }, json: { type: 'boolean' } });
+  const { values, positionals } = parse(ctx.rest, usageLine, { config: { type: 'string' }, run: { type: 'string' }, url: { type: 'string' }, server: { type: 'string' }, protocol: { type: 'string' }, json: { type: 'boolean' } });
   const [server, uri] = positionalsFor(usageLine, 'read-resource', positionals, [
     { name: 'server', required: false },
     { name: 'uri', required: true },
@@ -17,6 +17,7 @@ const readResource: Command = async (ctx) => {
     config: values.config as string | undefined,
     run: values.run as string | undefined,
     url: values.url as string | undefined,
+    protocol: values.protocol as string | undefined,
     json: values.json as boolean | undefined,
     serverConfig: values.server as string | undefined,
   });

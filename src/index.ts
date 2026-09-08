@@ -27,5 +27,6 @@ export { type UpOptions, upCommand } from './commands/up.ts';
 
 // Library utilities
 export { getSchema, SCHEMA_URL, validateSchema } from './lib/json-schema.ts';
+export { eraNegotiationError, PROTOCOL_VALUES, type ProtocolValue, protocolToVersionNegotiation } from './lib/protocol.ts';
 export { type InlineConfigOptions, type ResolvedServerConfig, resolveServerConfig } from './lib/resolve-server-config.ts';
 export * from './types.ts';

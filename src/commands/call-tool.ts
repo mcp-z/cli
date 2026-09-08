@@ -6,12 +6,14 @@
  */
 
 import { createServerRegistry, type ManagedClient, type ServerRegistry, type ToolArguments, ToolResponseError, type ToolResponseWrapper } from '@mcp-z/client';
+import { eraNegotiationError, protocolToVersionNegotiation } from '../lib/protocol.ts';
 import { type InlineConfigOptions, resolveServerConfig } from '../lib/resolve-server-config.ts';
 import { isHttpServer } from '../types.ts';
 
 export interface CallToolOptions extends InlineConfigOptions {
   tool: string; // Tool name (positional)
   args: string; // JSON args (positional)
+  protocol?: string; // --protocol legacy|auto|2026-07-28
   json?: boolean; // --json
 }
 
@@ -31,6 +33,9 @@ export interface CallToolOptions extends InlineConfigOptions {
 export async function callToolCommand(opts: CallToolOptions): Promise<void> {
   let registry: ServerRegistry | undefined;
   let client: ManagedClient | undefined;
+
+  // Fail fast on a bad --protocol value, before any server is spawned
+  const versionNegotiation = protocolToVersionNegotiation(opts.protocol);
 
   try {
     // 1. Resolve server configuration (from config file or inline options)
@@ -57,7 +62,7 @@ export async function callToolCommand(opts: CallToolOptions): Promise<void> {
 
     // Create registry (spawns stdio servers, registers HTTP servers)
     registry = createServerRegistry({ [serverName]: serverConfig }, { cwd: configDir });
-    client = await registry.connect(serverName);
+    client = await registry.connect(serverName, versionNegotiation !== undefined ? { versionNegotiation } : undefined);
 
     if (!isHttpServer(serverConfig) && !opts.json) {
       const elapsed = ((Date.now() - start) / 1000).toFixed(1);
@@ -108,12 +113,15 @@ export async function callToolCommand(opts: CallToolOptions): Promise<void> {
       }
     }
   } catch (error) {
+    // A pinned connection against a server that cannot serve the revision fails with the
+    // SDK's typed era error; surface it as a configuration error with a fix, not a stack
+    const err = eraNegotiationError(error) ?? error;
     if (opts.json) {
-      console.log(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }, null, 2));
+      console.log(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }, null, 2));
     } else {
-      console.error(`\n❌ ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`\n❌ ${err instanceof Error ? err.message : String(err)}`);
     }
-    throw error;
+    throw err;
   } finally {
     // 8. Cleanup - registry.close() handles both client and server close
     if (registry) {
