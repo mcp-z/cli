@@ -2,6 +2,7 @@ import assert from 'assert';
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { stopCli } from '../lib/stop-cli.ts';
 import { waitForOutput } from '../lib/wait-for-output.ts';
 
 // Capture working directory at module load time to avoid ENOENT errors
@@ -55,22 +56,7 @@ describe('integration/cwd-resolution', () => {
       await waitForOutput(getOut, /\[my-local\] → node .*my-local\.mjs/, 10000);
       assert.match(getOut(), /\[my-local\].*my-local\.mjs/);
     } finally {
-      // Graceful shutdown - attach listener BEFORE killing to avoid race condition
-      const closePromise = new Promise<void>((res) => {
-        // If process already exited, resolve immediately
-        if (child.exitCode !== null || child.signalCode !== null) {
-          res();
-          return;
-        }
-        child.once('close', res);
-      });
-
-      if (child.pid && !child.killed) {
-        child.kill('SIGINT');
-      }
-
-      // Wait for 'close' event (stdio streams fully closed)
-      await closePromise;
+      await stopCli(child);
     }
   });
 });

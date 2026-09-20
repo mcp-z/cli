@@ -402,6 +402,10 @@ describe('inspect command (integration)', () => {
             start: {
               command: 'node',
               args: [path.join(__dirname, '../../lib/servers/echo-http.mjs'), '--port', String(port)],
+              stop: {
+                command: 'node',
+                args: [path.join(__dirname, '../../lib/servers/request-http-stop.mjs'), `http://127.0.0.1:${port}/__mcpz/shutdown`],
+              },
             },
           },
         },

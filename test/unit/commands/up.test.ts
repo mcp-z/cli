@@ -3,6 +3,7 @@ import assert from 'assert';
 import * as fs from 'fs';
 import { safeRmSync } from 'fs-remove-compat';
 import * as path from 'path';
+import { stopCli } from '../../lib/stop-cli.ts';
 
 const TEST_CWD = process.cwd();
 
@@ -133,6 +134,10 @@ async function createTmpConfig(): Promise<string> {
           start: {
             command: 'node',
             args: ['../../test/lib/servers/echo-http.mjs', '--port', String(httpPort)],
+            stop: {
+              command: 'node',
+              args: ['../../test/lib/servers/request-http-stop.mjs', `http://127.0.0.1:${httpPort}/__mcpz/shutdown`],
+            },
           },
         },
         'stdio-server': {
@@ -198,18 +203,77 @@ function runUpHttpOnlyCommand(configPath: string, opts: { env?: Record<string, s
   return { child, getOut: () => out, getErr: () => err };
 }
 
+function getShutdownUrl(configPath: string): string {
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8')) as {
+    mcpServers: { 'echo-http': { start: { stop: { args: string[] } } } };
+  };
+  const url = config.mcpServers['echo-http']?.start.stop.args[1];
+  if (!url) throw new Error('HTTP test config is missing its application shutdown URL');
+  return url;
+}
+
+function waitForClose(child: ReturnType<typeof runUpHttpOnlyCommand>['child'], timeoutMs: number): Promise<{ code: number | null; signal: NodeJS.Signals | null }> {
+  let timer: NodeJS.Timeout | undefined;
+  return Promise.race([
+    new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((resolve) => child.once('close', (code, signal) => resolve({ code, signal }))),
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`CLI process did not close within ${timeoutMs}ms`)), timeoutMs);
+    }),
+  ]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+async function requestHttpShutdown(url: string): Promise<void> {
+  const response = await fetch(url, { method: 'POST', signal: AbortSignal.timeout(2000) });
+  await response.arrayBuffer();
+  assert.strictEqual(response.status, 202, 'owned HTTP fixture should accept cooperative shutdown');
+}
+
+async function waitForHttpReady(shutdownUrl: string, timeoutMs = 10000): Promise<void> {
+  const readyUrl = new URL('/mcp', shutdownUrl);
+  const deadline = Date.now() + timeoutMs;
+  let lastError: unknown;
+
+  while (Date.now() < deadline) {
+    const controller = new AbortController();
+    const requestTimer = setTimeout(() => controller.abort(), 500);
+    try {
+      const response = await fetch(readyUrl, { signal: controller.signal });
+      await response.arrayBuffer();
+      if (response.status === 405) return;
+      lastError = new Error(`HTTP server readiness endpoint returned ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    } finally {
+      clearTimeout(requestTimer);
+    }
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  const detail = lastError instanceof Error ? lastError.message : String(lastError);
+  throw new Error(`HTTP fixture did not become ready within ${timeoutMs}ms: ${detail}`);
+}
+
 describe('integration/up-http-only-command', () => {
   it('should start HTTP servers only', async () => {
     const tmpCfg = await createTmpConfig();
     const { child, getOut, getErr } = runUpHttpOnlyCommand(tmpCfg);
+    let closed = false;
     try {
       // Wait for HTTP server to spawn
       await waitForOutput(getOut, /\[echo-http\] → node .*echo-http\.mjs/, 10000);
+      await waitForHttpReady(getShutdownUrl(tmpCfg));
       assert.ok(/\[echo-http\].*echo-http\.mjs/.test(getOut()), 'HTTP server spawn logged');
 
       // Verify stdio server was NOT spawned (should be skipped)
       const out = getOut();
       assert.ok(!out.includes('echo-stdio'), 'stdio server should not be spawned by up --http-only command');
+
+      await requestHttpShutdown(getShutdownUrl(tmpCfg));
+      const result = await waitForClose(child, 5000);
+      closed = true;
+      assert.strictEqual(result.code, 0, 'CLI should exit after its owned HTTP process closes');
     } catch (error) {
       const stderr = getErr();
       if (stderr) {
@@ -217,52 +281,37 @@ describe('integration/up-http-only-command', () => {
       }
       throw error;
     } finally {
-      // Graceful shutdown
-      const closePromise = new Promise<void>((res) => {
-        if (child.exitCode !== null || child.signalCode !== null) {
-          res();
-          return;
-        }
-        child.once('close', res);
-      });
-
-      if (child.pid && !child.killed) {
-        child.kill('SIGINT');
-      }
-
-      await closePromise;
+      if (!closed) await stopCli(child);
     }
   });
 
-  it('should handle graceful shutdown on SIGINT', async () => {
+  it('should shut down owned HTTP servers without force on the available platform path', async () => {
     const tmpCfg = await createTmpConfig();
     const { child, getOut, getErr } = runUpHttpOnlyCommand(tmpCfg);
+    let closed = false;
     try {
       // Wait for server to start
       await waitForOutput(getOut, /\[echo-http\] → node .*echo-http\.mjs/, 10000);
+      await waitForHttpReady(getShutdownUrl(tmpCfg));
 
-      // Send SIGINT for graceful shutdown
-      const closePromise = new Promise<{ code: number | null; signal: NodeJS.Signals | null }>((res) => {
-        child.once('close', (code, signal) => {
-          res({ code, signal });
-        });
-      });
-
-      if (child.pid && !child.killed) {
+      const closePromise = waitForClose(child, 5000);
+      if (process.platform === 'win32') {
+        await requestHttpShutdown(getShutdownUrl(tmpCfg));
+      } else if (child.pid && child.exitCode === null && child.signalCode === null) {
         child.kill('SIGINT');
       }
 
-      // Wait for graceful shutdown
       const { code, signal } = await closePromise;
-
-      // Verify clean exit - either exitCode 0 or signal SIGINT (both are clean)
-      assert.ok(code === 0 || signal === 'SIGINT', 'should exit cleanly on SIGINT');
+      closed = true;
+      assert.strictEqual(code, 0, `CLI should exit cleanly after cooperative shutdown (signal=${signal ?? 'none'})`);
     } catch (error) {
       const stderr = getErr();
       if (stderr) {
         console.error('Server stderr output:', stderr);
       }
       throw error;
+    } finally {
+      if (!closed) await stopCli(child);
     }
   });
 

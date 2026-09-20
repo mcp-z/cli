@@ -39,3 +39,11 @@ Specs live in `test/unit/`, mirroring `src/`. Cross-service specs live in `test/
 ## Package Development
 
 See `README.md` for package overview and usage.
+
+## GitHub Actions
+
+CI follows the Linux/Windows template used by each-package: Node 26, `npm ci`, `prepublishOnly`, a current-runtime test run, and the supported-engine sweep. macOS coverage runs locally. Pull requests receive no provider credentials.
+
+`npm run test:ci` and `npm run test:ci:engines` run the credential-free selection. They select the same tests as the normal scripts.
+
+`npm test` and `npm run test:engines` retain full discovery. CI sets `TEST_INCLUDE_MANUAL=false`; consent tests require a person and run locally with `TEST_INCLUDE_MANUAL=true`. A green credential-free check does not certify live-provider behavior. Release evidence must include the configured live suites and relevant manual OAuth flows.

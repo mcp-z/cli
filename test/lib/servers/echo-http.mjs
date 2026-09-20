@@ -20,6 +20,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import express from 'express';
 import { parseArgs } from 'util';
 import { z } from 'zod';
+import { installHttpShutdown } from './http-shutdown.mjs';
 
 function parseConfig() {
   const { values } = parseArgs({
@@ -108,8 +109,10 @@ async function main() {
 
   // Create Express app with sessionless MCP transport
   const app = express();
+  let httpServer;
 
   app.use(express.json());
+  const shutdown = installHttpShutdown(app, server, () => httpServer, 'echo-http');
 
   // Handle GET requests to /mcp with 405 (tells client no SSE support)
   app.get('/mcp', (_req, res) => {
@@ -150,7 +153,7 @@ async function main() {
     }
   });
 
-  const httpServer = app.listen(config.port, () => {
+  httpServer = app.listen(config.port, () => {
     console.error(`[echo-http] Ready on port ${config.port}`);
   });
 
@@ -162,12 +165,6 @@ async function main() {
     }
     process.exit(1);
   });
-
-  // Graceful shutdown
-  const shutdown = () => {
-    httpServer.close();
-    process.exit(0);
-  };
 
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
