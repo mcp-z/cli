@@ -15,6 +15,16 @@ import * as url from 'url';
 const __dirname = path.dirname(typeof __filename !== 'undefined' ? __filename : url.fileURLToPath(import.meta.url));
 
 describe('read-resource command (integration)', () => {
+  const richResource = {
+    _meta: { 'fixture/result': 'resource' },
+    fixtureExtension: { preserved: true },
+    contents: [
+      { uri: 'fixture://first', mimeType: 'text/plain', text: 'First text entry', _meta: { 'fixture/entry': 'first' } },
+      { uri: 'fixture://second', mimeType: 'text/plain', text: 'Second text entry' },
+      { uri: 'fixture://binary', mimeType: 'application/octet-stream', blob: 'AAEC' },
+      { uri: 'fixture://unknown', blob: 'c2Vjb25k' },
+    ],
+  };
   let tempDir: string;
   let testConfigPath: string;
 
@@ -22,9 +32,22 @@ describe('read-resource command (integration)', () => {
     tempDir = path.resolve('.tmp', `read-resource-integration-${Date.now()}`);
     fs.mkdirSync(tempDir, { recursive: true });
 
+    const richServerPath = path.join(tempDir, 'resource-output.mjs');
+    fs.writeFileSync(
+      richServerPath,
+      `import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { ReadResourceRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+const server = new Server({ name: 'resource-output', version: '1.0.0' }, { capabilities: { resources: {} } });
+server.setRequestHandler(ReadResourceRequestSchema, async () => (${JSON.stringify(richResource)}));
+await server.connect(new StdioServerTransport());
+`
+    );
+
     // Create a test .mcp.json config with echo server
     const testConfig = {
       mcpServers: {
+        rich: { command: 'node', args: [richServerPath] },
         echo: {
           command: 'node',
           args: [path.join(__dirname, '../../lib/servers/echo-stdio.mjs')],
@@ -48,6 +71,37 @@ describe('read-resource command (integration)', () => {
   });
 
   describe('stdio mode', () => {
+    it('preserves every text and binary entry in text output', async () => {
+      const output: string[] = [];
+      const originalLog = console.log;
+      console.log = (...args: unknown[]) => output.push(args.join(' '));
+
+      try {
+        await readResourceCommand({ server: 'rich', uri: 'fixture://multiple', config: testConfigPath });
+      } finally {
+        console.log = originalLog;
+      }
+
+      assert.deepStrictEqual(output.slice(output.indexOf('Content:')), ['Content:', 'First text entry', 'Content:', 'Second text entry', 'Blob content (application/octet-stream): 4 bytes', 'Blob content (unknown type): 8 bytes']);
+    });
+
+    it('preserves all entries and metadata with JSON formatting', async () => {
+      const output: string[] = [];
+      const originalLog = console.log;
+      console.log = (...args: unknown[]) => output.push(args.join(' '));
+
+      try {
+        await readResourceCommand({ server: 'rich', uri: 'fixture://multiple', json: true, config: testConfigPath });
+      } finally {
+        console.log = originalLog;
+      }
+
+      assert.strictEqual(output.length, 1);
+      const parsed = JSON.parse(output[0]);
+      assert.deepStrictEqual(parsed, richResource);
+      assert.strictEqual(output[0], JSON.stringify(parsed, null, 2));
+    });
+
     it('should read resource from stdio server and display result', async () => {
       // Capture console output
       const output: string[] = [];

@@ -72,8 +72,7 @@ export async function readResourceCommand(opts: ReadResourceOptions): Promise<vo
       console.log(`📖 Reading ${opts.uri}...`);
     }
 
-    const resourceResponse = await client.readResource(opts.uri);
-    const resource = resourceResponse.raw();
+    const resource = await client.readResource(opts.uri);
 
     // Success case
     if (opts.json) {

@@ -88,8 +88,7 @@ export async function getPromptCommand(opts: GetPromptOptions): Promise<void> {
       console.log(`💬 Getting ${opts.name}...`);
     }
 
-    const promptResponse = await client.getPrompt(opts.name, promptArgs);
-    const prompt = promptResponse.raw();
+    const prompt = await client.getPrompt(opts.name, promptArgs);
 
     // Success case
     if (opts.json) {

@@ -15,6 +15,18 @@ import * as url from 'url';
 const __dirname = path.dirname(typeof __filename !== 'undefined' ? __filename : url.fileURLToPath(import.meta.url));
 
 describe('get-prompt command (integration)', () => {
+  const richPrompt = {
+    description: 'Rich prompt description',
+    _meta: { 'fixture/result': 'prompt' },
+    fixtureExtension: { preserved: true },
+    messages: [
+      { role: 'user', content: { type: 'text', text: 'First user text' } },
+      { role: 'assistant', content: { type: 'text', text: 'Second assistant text' } },
+      { role: 'assistant', content: { type: 'image', data: 'aW1hZ2U=', mimeType: 'image/png', annotations: { audience: ['user'], priority: 0.7 } } },
+      { role: 'user', content: { type: 'resource', resource: { uri: 'fixture://embedded', mimeType: 'text/plain', text: 'Embedded resource text', _meta: { 'fixture/entry': 'embedded' } } } },
+      { role: 'assistant', content: { type: 'resource_link', uri: 'fixture://linked', name: 'Linked resource', mimeType: 'application/octet-stream' } },
+    ],
+  };
   let tempDir: string;
   let testConfigPath: string;
 
@@ -22,9 +34,22 @@ describe('get-prompt command (integration)', () => {
     tempDir = path.resolve('.tmp', `get-prompt-integration-${Date.now()}`);
     fs.mkdirSync(tempDir, { recursive: true });
 
+    const richServerPath = path.join(tempDir, 'prompt-output.mjs');
+    fs.writeFileSync(
+      richServerPath,
+      `import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { GetPromptRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+const server = new Server({ name: 'prompt-output', version: '1.0.0' }, { capabilities: { prompts: {} } });
+server.setRequestHandler(GetPromptRequestSchema, async () => (${JSON.stringify(richPrompt)}));
+await server.connect(new StdioServerTransport());
+`
+    );
+
     // Create a test .mcp.json config with echo server
     const testConfig = {
       mcpServers: {
+        rich: { command: 'node', args: [richServerPath] },
         echo: {
           command: 'node',
           args: [path.join(__dirname, '../../lib/servers/echo-stdio.mjs')],
@@ -48,6 +73,49 @@ describe('get-prompt command (integration)', () => {
   });
 
   describe('stdio mode', () => {
+    it('preserves description, roles and rich content in text output', async () => {
+      const output: string[] = [];
+      const originalLog = console.log;
+      console.log = (...args: unknown[]) => output.push(args.join(' '));
+
+      try {
+        await getPromptCommand({ server: 'rich', name: 'rich', args: '{}', config: testConfigPath });
+      } finally {
+        console.log = originalLog;
+      }
+
+      assert.deepStrictEqual(output.slice(output.indexOf('Description: Rich prompt description\n')), [
+        'Description: Rich prompt description\n',
+        'Messages:',
+        '  [user]:',
+        '    First user text',
+        '  [assistant]:',
+        '    Second assistant text',
+        '  [assistant]:',
+        '    [Image: image/png]',
+        '  [user]:',
+        '    [Resource: fixture://embedded]',
+        '  [assistant]:',
+      ]);
+    });
+
+    it('preserves the complete prompt result and formatting in JSON output', async () => {
+      const output: string[] = [];
+      const originalLog = console.log;
+      console.log = (...args: unknown[]) => output.push(args.join(' '));
+
+      try {
+        await getPromptCommand({ server: 'rich', name: 'rich', args: '{}', json: true, config: testConfigPath });
+      } finally {
+        console.log = originalLog;
+      }
+
+      assert.strictEqual(output.length, 1);
+      const parsed = JSON.parse(output[0]);
+      assert.deepStrictEqual(parsed, richPrompt);
+      assert.strictEqual(output[0], JSON.stringify(parsed, null, 2));
+    });
+
     it('should get prompt from stdio server and display result', async () => {
       // Capture console output
       const output: string[] = [];
