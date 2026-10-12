@@ -50,8 +50,7 @@
   },
   "files": [
     "dist",
-    "schemas",
-    "skills"
+    "schemas"
   ],
   "scripts": {
     "build": "tsds validate",

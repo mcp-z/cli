@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.1] - 2026-10-12
+
+### Changed
+
+The npm package excludes agent skill files. Install `mcp-z-cli` separately from Git with `npx skills add https://github.com/mcp-z/cli.git -s mcp-z-cli`; the README links to its repository guidance.
+
 ## [1.2.0] - 2026-09-07
 
 ### Added

@@ -28,7 +28,11 @@ mcp-z inspect --servers SERVER --tools --json
 mcp-z call-tool SERVER TOOL '{"argument":"value"}' --json
 ```
 
-Replace `SERVER`, `TOOL`, and the illustrative JSON with your configured server and its discovered schema. The first inspection is a readable overview; request the full JSON schema when composing an unfamiliar call. These examples use POSIX shell quoting. The [mcp-z-cli skill](skills/mcp-z-cli/SKILL.md) covers discovery, output selection, argument handling, provider operations, prompts, and resources through task-specific examples.
+Replace `SERVER`, `TOOL`, and the illustrative JSON with your configured server and its discovered schema. The first inspection is a readable overview; request the full JSON schema when composing an unfamiliar call. These examples use POSIX shell quoting. The [mcp-z-cli skill](https://github.com/mcp-z/cli/blob/master/skills/mcp-z-cli/SKILL.md) covers discovery, output selection, argument handling, provider operations, prompts, and resources through task-specific examples. Install it from Git separately from the npm package:
+
+```sh
+npx skills add https://github.com/mcp-z/cli.git -s mcp-z-cli
+```
 
 Without `--config`, lookup starts in the current working directory and uses the nearest `.mcp.json`, searching upward through the home directory inclusive. Outside the home directory tree, it checks only the current directory. Spawned servers use the config directory as their working directory. For alternate configs, `--config .mcp.staging.json` searches upward by filename, while `--config ./.mcp.staging.json` selects that exact path.
 
