@@ -1,6 +1,7 @@
 import { validateCommand } from '@mcp-z/cli';
 import assert from 'assert';
 import * as fs from 'fs';
+import { safeRmSync } from 'fs-remove-compat';
 import * as path from 'path';
 
 describe('manifest validate command', () => {
@@ -202,6 +203,23 @@ describe('manifest validate command', () => {
 
       // Should pass with warnings (not throw)
       await validateCommand(unknownServerFile);
+    });
+
+    it('should fail when the server package has a broken server.json', async () => {
+      const projectDir = path.resolve(tmpDir, 'broken-server-json');
+      fs.mkdirSync(path.join(projectDir, 'node_modules', 'broken-server'), { recursive: true });
+      fs.writeFileSync(path.join(projectDir, 'node_modules', 'broken-server', 'server.json'), '{ not json');
+      const configFile = path.join(projectDir, 'mcp.json');
+      fs.writeFileSync(configFile, JSON.stringify({ mcpServers: { 'broken-server': { command: 'npx', args: ['-y', 'broken-server'], env: {} } } }));
+
+      const originalCwd = process.cwd();
+      process.chdir(projectDir);
+      try {
+        await assert.rejects(() => validateCommand(configFile), { code: 1 }, 'A broken server.json must not pass validation');
+      } finally {
+        process.chdir(originalCwd);
+        safeRmSync(projectDir, { recursive: true, force: true });
+      }
     });
 
     it('should warn for missing required environment variables', async () => {

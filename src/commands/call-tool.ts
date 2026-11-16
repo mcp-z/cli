@@ -8,6 +8,7 @@
 import { createServerRegistry, type ManagedClient, type ServerRegistry, type ToolArguments, ToolResponseError, type ToolResponseWrapper } from '@mcp-z/client';
 import { eraNegotiationError, protocolToVersionNegotiation } from '../lib/protocol.ts';
 import { type InlineConfigOptions, resolveServerConfig } from '../lib/resolve-server-config.ts';
+import { parseToolResult } from '../lib/tool-result.ts';
 import { isHttpServer } from '../types.ts';
 
 export interface CallToolOptions extends InlineConfigOptions {
@@ -156,22 +157,4 @@ function extractToolErrorText(error: ToolResponseError): string | undefined {
     return first.text;
   }
   return undefined;
-}
-
-function parseToolResult(response: ToolResponseWrapper): unknown | undefined {
-  try {
-    return response.json();
-  } catch (error) {
-    if (error instanceof ToolResponseError) {
-      if ('isError' in error.response && error.response.isError) {
-        throw error;
-      }
-      try {
-        return response.text();
-      } catch {
-        return undefined;
-      }
-    }
-    throw error;
-  }
 }

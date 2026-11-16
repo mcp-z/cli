@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.3.2] - 2026-11-16
+
+### Fixed
+
+- `call-tool` prints the content blocks as JSON when a tool succeeds with no text (for example an image or resource result), instead of printing nothing.
+- `manifest validate` reports an error when an installed server's `server.json` is unreadable or invalid, instead of a "package not found" warning that let validation pass.
+- Server discovery fails with the underlying error when a server directory cannot be read (for example a permissions error), instead of stopping early and later reporting the server as not found. A dangling `@scope` link in `node_modules` is skipped.
+- Reading a scoped server (`@scope/name`) reports "not found" only when the package or its `server.json` is not installed; a permissions or other read error is now reported as itself. In the ESM build, scoped names previously always reported "not found" because package resolution failed internally; they now resolve.
+
 ## [1.3.1] - 2026-10-12
 
 ### Changed

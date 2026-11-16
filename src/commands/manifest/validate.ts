@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import type { MCPConfiguration, ServerConfig } from '../../types.ts';
 import { isHttpServer, isStdioServer } from '../../types.ts';
-import { MetadataReader, type ServerMetadata } from './metadata-reader.ts';
+import { MetadataReader, type ServerMetadata, ServerNotFoundError } from './metadata-reader.ts';
 
 interface ValidationResult {
   valid: boolean;
@@ -124,11 +124,12 @@ async function validateServerConfig(serverName: string, serverConfig: ServerConf
   try {
     metadata = await metadataReader.readServerMetadata(serverName);
   } catch (error) {
-    return {
-      valid: false,
-      severity: 'warning',
-      message: `Cannot verify: server package not found (${error instanceof Error ? error.message : String(error)})`,
-    };
+    const reason = error instanceof Error ? error.message : String(error);
+    if (error instanceof ServerNotFoundError) {
+      return { valid: false, severity: 'warning', message: `Cannot verify: server package not found (${reason})` };
+    }
+    // The package is installed but its server.json is unreadable or invalid: that is a failure, not a missing package
+    return { valid: false, severity: 'error', message: `Cannot read server.json for "${serverName}": ${reason}` };
   }
 
   // Detect transport using type guard

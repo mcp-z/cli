@@ -1,5 +1,7 @@
 import { MetadataReader } from '@mcp-z/cli';
 import assert from 'assert';
+import * as fs from 'fs';
+import { safeRmSync } from 'fs-remove-compat';
 import * as path from 'path';
 
 describe('MetadataReader', () => {
@@ -52,6 +54,126 @@ describe('MetadataReader', () => {
         },
         'Should throw error for non-existent server'
       );
+    });
+  });
+
+  describe('discoverInstalledServers scan failures', () => {
+    const scanDir = path.join('.tmp', 'metadata-reader-scan');
+    const serverJson = JSON.stringify({ name: 'x', description: 'x', version: '1.0.0', title: 'x', packages: [] });
+    const none = path.join(scanDir, 'none');
+
+    // Symlinks need a privilege some Windows accounts lack: a genuine capability absence
+    function symlinkOrSkip(ctx: Mocha.Context, target: string, link: string): void {
+      try {
+        fs.symlinkSync(target, link);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'EPERM') ctx.skip();
+        throw error;
+      }
+    }
+
+    beforeEach(() => {
+      safeRmSync(scanDir, { recursive: true, force: true });
+      fs.mkdirSync(scanDir, { recursive: true });
+    });
+
+    afterEach(() => {
+      safeRmSync(scanDir, { recursive: true, force: true });
+    });
+
+    it('should reject when the monorepo path cannot be listed', async () => {
+      const notADirectory = path.join(scanDir, 'servers');
+      fs.writeFileSync(notADirectory, 'x');
+
+      const scanning = new MetadataReader({ monorepoPath: notADirectory, nodeModulesPath: none });
+      await assert.rejects(() => scanning.discoverInstalledServers(), { code: 'ENOTDIR' });
+    });
+
+    it('should reject when node_modules cannot be listed', async () => {
+      const notADirectory = path.join(scanDir, 'node_modules');
+      fs.writeFileSync(notADirectory, 'x');
+
+      const scanning = new MetadataReader({ monorepoPath: none, nodeModulesPath: notADirectory });
+      await assert.rejects(() => scanning.discoverInstalledServers(), { code: 'ENOTDIR' });
+    });
+
+    it('should skip a dangling scope link and still find later packages', async function () {
+      const nodeModules = path.join(scanDir, 'node_modules');
+      fs.mkdirSync(path.join(nodeModules, '@zscope', 'server-b'), { recursive: true });
+      fs.writeFileSync(path.join(nodeModules, '@zscope', 'server-b', 'server.json'), serverJson);
+      symlinkOrSkip(this, path.resolve(scanDir, 'missing-target'), path.join(nodeModules, '@ascope'));
+
+      const scanning = new MetadataReader({ monorepoPath: none, nodeModulesPath: nodeModules });
+      const servers = await scanning.discoverInstalledServers();
+      assert.deepStrictEqual(
+        servers.map((s) => s.shortName),
+        ['b']
+      );
+    });
+
+    it('should reject when a scope entry fails with something other than not-found', async function () {
+      const nodeModules = path.join(scanDir, 'node_modules');
+      fs.mkdirSync(nodeModules, { recursive: true });
+      // A link pointing at itself: stat fails with ELOOP, not ENOENT
+      symlinkOrSkip(this, path.resolve(nodeModules, '@loop'), path.join(nodeModules, '@loop'));
+
+      const scanning = new MetadataReader({ monorepoPath: none, nodeModulesPath: nodeModules });
+      await assert.rejects(() => scanning.discoverInstalledServers(), { code: 'ELOOP' });
+    });
+  });
+
+  describe('readServerMetadata scoped package failures', () => {
+    const projectDir = path.resolve('.tmp', 'metadata-reader-scoped');
+    const pkgDir = path.join(projectDir, 'node_modules', '@scope', 'server-x');
+
+    beforeEach(() => {
+      safeRmSync(projectDir, { recursive: true, force: true });
+      fs.mkdirSync(pkgDir, { recursive: true });
+      fs.writeFileSync(path.join(pkgDir, 'package.json'), JSON.stringify({ name: '@scope/server-x', version: '1.0.0' }));
+    });
+
+    afterEach(() => {
+      try {
+        fs.chmodSync(path.join(pkgDir, 'server.json'), 0o644);
+      } catch {
+        // file not created by this test
+      }
+      safeRmSync(projectDir, { recursive: true, force: true });
+    });
+
+    it('should report a package that is not installed as not found', async () => {
+      const scanning = new MetadataReader({ moduleResolutionPaths: [projectDir], skipSchemaValidation: true });
+      await assert.rejects(() => scanning.readServerMetadata('@scope/absent'), { name: 'ServerNotFoundError' });
+    });
+
+    it('should report an installed package without server.json as not found', async () => {
+      const scanning = new MetadataReader({ moduleResolutionPaths: [projectDir], skipSchemaValidation: true });
+      await assert.rejects(() => scanning.readServerMetadata('@scope/server-x'), { name: 'ServerNotFoundError' });
+    });
+
+    it('should report an installed package that does not export server.json as not found', async () => {
+      // A package of its own: Node caches each package.json by path, so rewriting server-x's would be ignored
+      const closed = path.join(projectDir, 'node_modules', '@scope', 'server-closed');
+      fs.mkdirSync(closed, { recursive: true });
+      fs.writeFileSync(path.join(closed, 'package.json'), JSON.stringify({ name: '@scope/server-closed', version: '1.0.0', exports: {} }));
+      fs.writeFileSync(path.join(closed, 'server.json'), '{}');
+      const scanning = new MetadataReader({ moduleResolutionPaths: [projectDir], skipSchemaValidation: true });
+      await assert.rejects(() => scanning.readServerMetadata('@scope/server-closed'), { name: 'ServerNotFoundError' });
+    });
+
+    it('should propagate a read error on an installed server.json', async function () {
+      const file = path.join(pkgDir, 'server.json');
+      fs.writeFileSync(file, '{}');
+      fs.chmodSync(file, 0o000);
+      try {
+        fs.readFileSync(file);
+        this.skip(); // this account can read a mode-000 file (Windows, root): no permission error to produce
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'EACCES') throw error;
+      }
+
+      const scanning = new MetadataReader({ moduleResolutionPaths: [projectDir], skipSchemaValidation: true });
+      await assert.rejects(() => scanning.readServerMetadata('@scope/server-x'), { code: 'EACCES' });
     });
   });
 

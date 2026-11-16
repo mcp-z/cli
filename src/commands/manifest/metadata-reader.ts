@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import Module from 'module';
 import * as path from 'path';
 import { validateSchema } from '../../lib/json-schema.ts';
 
@@ -51,6 +52,29 @@ export interface MetadataReaderOptions {
   skipSchemaValidation?: boolean;
 }
 
+// `require` exists in the CJS build only; the ESM build needs one made from its own URL
+const _require = typeof require === 'undefined' ? Module.createRequire(import.meta.url) : require;
+
+/** The named server has no server.json installed (as opposed to one that exists but is unreadable or invalid). */
+export class ServerNotFoundError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'ServerNotFoundError';
+    if (options && 'cause' in options) (this as { cause?: unknown }).cause = options.cause;
+  }
+}
+
+/** A dangling symlink or an entry removed mid-scan: nothing to read there, so it is skipped. */
+function isMissing(error: unknown): boolean {
+  return (error as NodeJS.ErrnoException)?.code === 'ENOENT';
+}
+
+/** Resolution or read failures that mean the package or its server.json is simply not there. */
+function isNotInstalled(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException)?.code;
+  return code === 'MODULE_NOT_FOUND' || code === 'ENOENT' || code === 'ERR_PACKAGE_PATH_NOT_EXPORTED';
+}
+
 export class MetadataReader {
   private readonly options: MetadataReaderOptions;
 
@@ -75,13 +99,17 @@ export class MetadataReader {
 
     if (serverName.startsWith('@')) {
       try {
-        const packagePath = require.resolve(`${serverName}/server.json`, {
+        const packagePath = _require.resolve(`${serverName}/server.json`, {
           paths: resolutionPaths,
         });
         content = fs.readFileSync(packagePath, 'utf8');
         sourcePath = packagePath;
-      } catch {
-        throw new Error(`Server '${serverName}' not found in node_modules`);
+      } catch (error) {
+        // Only "not installed / no server.json" means not found; a permissions or other read error must surface
+        if (isNotInstalled(error)) {
+          throw new ServerNotFoundError(`Server '${serverName}' not found in node_modules`, { cause: error });
+        }
+        throw error;
       }
     } else {
       // Short name - search for matching package
@@ -92,7 +120,7 @@ export class MetadataReader {
         content = fs.readFileSync(match.serverJsonPath, 'utf8');
         sourcePath = match.serverJsonPath;
       } else {
-        throw new Error(`Server '${serverName}' not found. Run 'mcpz config list --available' to see installed servers.`);
+        throw new ServerNotFoundError(`Server '${serverName}' not found. Run 'mcpz config list --available' to see installed servers.`);
       }
     }
 
@@ -132,73 +160,70 @@ export class MetadataReader {
     // Check ../servers/ for monorepo development (packages named server-*)
     const monorepoPath = this.options.monorepoPath ?? path.join(basePath, '..', 'servers');
     if (fs.existsSync(monorepoPath)) {
-      try {
-        const entries = fs.readdirSync(monorepoPath);
-        for (const entry of entries) {
-          const serverJsonPath = path.join(monorepoPath, entry, 'server.json');
-          if (fs.existsSync(serverJsonPath)) {
-            // Extract short name (e.g., "gmail" from "mcp-gmail")
-            const shortName = entry.startsWith('server-') ? entry.replace('server-', '') : entry;
-            if (!seen.has(shortName)) {
-              seen.add(shortName);
-              servers.push({
-                shortName,
-                packageName: entry, // Use directory name as package name for monorepo
-                serverJsonPath,
-              });
-            }
+      const entries = fs.readdirSync(monorepoPath);
+      for (const entry of entries) {
+        const serverJsonPath = path.join(monorepoPath, entry, 'server.json');
+        if (fs.existsSync(serverJsonPath)) {
+          // Extract short name (e.g., "gmail" from "mcp-gmail")
+          const shortName = entry.startsWith('server-') ? entry.replace('server-', '') : entry;
+          if (!seen.has(shortName)) {
+            seen.add(shortName);
+            servers.push({
+              shortName,
+              packageName: entry, // Use directory name as package name for monorepo
+              serverJsonPath,
+            });
           }
         }
-      } catch {
-        // Ignore errors reading monorepo path
       }
     }
 
     // Check node_modules for any package with server.json
     const nodeModulesPath = this.options.nodeModulesPath ?? path.join(basePath, 'node_modules');
     if (fs.existsSync(nodeModulesPath)) {
-      try {
-        const entries = fs.readdirSync(nodeModulesPath);
+      const entries = fs.readdirSync(nodeModulesPath);
 
-        for (const entry of entries) {
-          if (entry.startsWith('@')) {
-            // Scoped package - check all packages in scope
-            const scopePath = path.join(nodeModulesPath, entry);
-            if (fs.statSync(scopePath).isDirectory()) {
-              const scopedPackages = fs.readdirSync(scopePath);
-              for (const pkg of scopedPackages) {
-                const serverJsonPath = path.join(scopePath, pkg, 'server.json');
-                if (fs.existsSync(serverJsonPath)) {
-                  const shortName = pkg.startsWith('server-') ? pkg.replace('server-', '') : pkg;
-                  if (!seen.has(shortName)) {
-                    seen.add(shortName);
-                    servers.push({
-                      shortName,
-                      packageName: `${entry}/${pkg}`,
-                      serverJsonPath,
-                    });
-                  }
-                }
-              }
-            }
-          } else {
-            // Unscoped package - check for server.json
-            const serverJsonPath = path.join(nodeModulesPath, entry, 'server.json');
+      for (const entry of entries) {
+        if (entry.startsWith('@')) {
+          // Scoped package - check all packages in scope
+          const scopePath = path.join(nodeModulesPath, entry);
+          let scopedPackages: string[];
+          try {
+            if (!fs.statSync(scopePath).isDirectory()) continue;
+            scopedPackages = fs.readdirSync(scopePath);
+          } catch (error) {
+            if (isMissing(error)) continue; // dangling scope link
+            throw error;
+          }
+          for (const pkg of scopedPackages) {
+            const serverJsonPath = path.join(scopePath, pkg, 'server.json');
             if (fs.existsSync(serverJsonPath)) {
-              const shortName = entry.startsWith('server-') ? entry.replace('server-', '') : entry;
+              const shortName = pkg.startsWith('server-') ? pkg.replace('server-', '') : pkg;
               if (!seen.has(shortName)) {
                 seen.add(shortName);
                 servers.push({
                   shortName,
-                  packageName: entry,
+                  packageName: `${entry}/${pkg}`,
                   serverJsonPath,
                 });
               }
             }
           }
+        } else {
+          // Unscoped package - check for server.json
+          const serverJsonPath = path.join(nodeModulesPath, entry, 'server.json');
+          if (fs.existsSync(serverJsonPath)) {
+            const shortName = entry.startsWith('server-') ? entry.replace('server-', '') : entry;
+            if (!seen.has(shortName)) {
+              seen.add(shortName);
+              servers.push({
+                shortName,
+                packageName: entry,
+                serverJsonPath,
+              });
+            }
+          }
         }
-      } catch {
-        // Ignore errors reading node_modules
       }
     }
 
