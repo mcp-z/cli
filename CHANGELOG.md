@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.0]
+
+### Changed
+
+- Uses `@mcp-z/client` 2.5, which stores sign-ins with keyv 6. Sign-ins saved by the previous version in `.mcp-z/tokens.json` are moved to the new format automatically on first use.
+
 ## [1.3.2] - 2026-11-16
 
 ### Fixed
