@@ -8,6 +8,7 @@
 import { createServerRegistry, type PromptArgument, type ServerRegistry, type ServersConfig, type VersionNegotiationOptions } from '@mcp-z/client';
 import * as fs from 'fs';
 import * as path from 'path';
+import { clientInfo } from '../lib/client-info.ts';
 import findConfigPath from '../lib/find-config-path.ts';
 import { eraNegotiationError, protocolToVersionNegotiation } from '../lib/protocol.ts';
 import { isHttpServer, type ServerConfig } from '../types.ts';
@@ -91,6 +92,7 @@ export async function inspectCommand(opts: InspectOptions = {}): Promise<void> {
     // In attach mode, don't spawn - just register for connection
     registry = createServerRegistry(servers, {
       cwd: configDir,
+      clientInfo: clientInfo(),
       dialects: opts.attach ? [] : ['servers', 'start'], // Empty dialects = no spawning
     });
 

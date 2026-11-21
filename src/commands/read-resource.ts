@@ -6,6 +6,7 @@
  */
 
 import { createServerRegistry, type ManagedClient, type ServerRegistry } from '@mcp-z/client';
+import { clientInfo } from '../lib/client-info.ts';
 import { eraNegotiationError, protocolToVersionNegotiation } from '../lib/protocol.ts';
 import { type InlineConfigOptions, resolveServerConfig } from '../lib/resolve-server-config.ts';
 import { isHttpServer } from '../types.ts';
@@ -59,7 +60,7 @@ export async function readResourceCommand(opts: ReadResourceOptions): Promise<vo
     }
 
     // Create registry (spawns stdio servers, registers HTTP servers)
-    registry = createServerRegistry({ [serverName]: serverConfig }, { cwd: configDir });
+    registry = createServerRegistry({ [serverName]: serverConfig }, { cwd: configDir, clientInfo: clientInfo() });
     client = await registry.connect(serverName, versionNegotiation !== undefined ? { versionNegotiation } : undefined);
 
     if (!isHttpServer(serverConfig) && !opts.json) {

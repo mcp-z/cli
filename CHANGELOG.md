@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.1] - 2026-11-20
+
+### Changed
+
+- Servers now see the cli's own name (`@mcp-z/cli`) and real version as the client identity, instead of `mcp-cli-client` 1.0.0. Requires `@mcp-z/client` 2.7.
+
+### Fixed
+
+- Sign-ins saved by the cli in `.mcp-z/tokens.json` are no longer lost when an mcp-z server or another cli process writes the same file; a damaged file is reported with its path instead of being treated as empty. An older mcp-z server or cli that still rewrites the whole file can still overwrite entries, so upgrade the cli and the servers together.
+
 ## [1.4.0]
 
 ### Changed

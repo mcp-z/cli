@@ -1,28 +1,11 @@
 // Parsing and dispatch only. Commands live in src/cli/, one file each, lazy-loaded —
 // nothing dependency-heavy may be imported at the top of this file (@mcp-z/client, ajv,
 // @inquirer/* must never load for --version/--help or a command that doesn't need them).
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { COMMANDS, USAGE } from './cli/index.ts';
 import { ERROR_CODE } from './cli/shared.ts';
 import type { Ctx } from './cli/types.ts';
-
-// __dirname (CJS) or its ESM equivalent, then two fixed hops up to the package root. NOT
-// `import.meta.resolve('@mcp-z/cli/package.json')` -- Node's self-reference lookup throws
-// ERR_MODULE_NOT_FOUND from a file this deep; a location-relative path is stable across both
-// build targets (dist/cjs/cli.js and dist/esm/cli.js are both two hops below the root).
-const __dirname = path.dirname(typeof __filename !== 'undefined' ? __filename : fileURLToPath(import.meta.url));
-
-function packageVersion(): string {
-  try {
-    const pkgPath = path.resolve(__dirname, '..', '..', 'package.json');
-    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: string };
-    return pkg.version ?? 'unknown';
-  } catch {
-    return 'unknown';
-  }
-}
+import { packageVersion } from './lib/client-info.ts';
 
 function usage(name: string): string {
   const lines = Object.values(USAGE).map((u) => `  ${name} ${u}`);
