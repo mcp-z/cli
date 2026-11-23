@@ -9,7 +9,7 @@
  * - Echo tool with JSON-structured responses
  * - Echo resource for URI-based access
  * - Echo prompt for message processing
- * - Configurable port via --port argument
+ * - Requires --port (no default)
  * - Graceful shutdown on SIGINT/SIGTERM
  *
  * USAGE: node test/lib/servers/echo-http.mjs --port 3000
@@ -27,14 +27,19 @@ function parseConfig() {
     options: {
       port: {
         type: 'string',
-        default: '50200',
       },
     },
     strict: true,
   });
 
+  const port = /^\d+$/.test(values.port ?? '') ? Number(values.port) : Number.NaN;
+  if (!(port >= 1 && port <= 65535)) {
+    console.error('echo-http: --port is required and must be a number from 1 to 65535');
+    process.exit(2);
+  }
+
   return {
-    port: Number.parseInt(values.port, 10),
+    port,
   };
 }
 

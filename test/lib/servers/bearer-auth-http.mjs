@@ -23,7 +23,7 @@
  *   VALID_TOKENS="token1,token2" node test/lib/servers/bearer-auth-http.ts
  *
  * CONFIGURATION:
- *   --port <number>           Server port (default: 50300)
+ *   --port <number>           Server port (required)
  *   --token <string>          Single valid bearer token (CLI arg)
  *   VALID_TOKENS=<csv>        Comma-separated valid tokens (env var)
  *   Default token: "test-bearer-token" (if no tokens configured)
@@ -40,7 +40,6 @@ function parseConfig() {
     options: {
       port: {
         type: 'string',
-        default: '50300',
       },
       token: {
         type: 'string',
@@ -48,6 +47,12 @@ function parseConfig() {
     },
     strict: true,
   });
+
+  const port = /^\d+$/.test(values.port ?? '') ? Number(values.port) : Number.NaN;
+  if (!(port >= 1 && port <= 65535)) {
+    console.error('bearer-auth-http: --port is required and must be a number from 1 to 65535');
+    process.exit(2);
+  }
 
   // Build valid tokens set from CLI arg or env var
   const validTokens = new Set();
@@ -74,7 +79,7 @@ function parseConfig() {
   console.error(`[bearer-auth-http] Configured valid tokens: ${validTokens.size} token(s)`);
 
   return {
-    port: Number.parseInt(values.port, 10),
+    port,
     validTokens,
   };
 }
